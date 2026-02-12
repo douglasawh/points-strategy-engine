@@ -156,11 +156,11 @@ class Agent:
 
         states, actions, rewards, next_states, dones = zip(*batch)
 
-        states = torch.tensor(states).to(DEVICE)
+	states = torch.tensor(np.array(states), dtype=torch.float32).to(DEVICE)
         actions = torch.tensor(actions).unsqueeze(1).to(DEVICE)
         rewards = torch.tensor(rewards).unsqueeze(1).to(DEVICE)
-        next_states = torch.tensor(next_states).to(DEVICE)
-        dones = torch.tensor(dones).unsqueeze(1).to(DEVICE)
+        next_states = torch.tensor(np.array(next_states), dtype=torch.float32).to(DEVICE)
+	dones = torch.tensor(dones, dtype=torch.float32).unsqueeze(1).to(DEVICE)
 
         q_values = self.model(states).gather(1, actions)
         next_q = self.target(next_states).max(1)[0].unsqueeze(1)
