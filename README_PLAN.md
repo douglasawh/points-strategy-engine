@@ -1,5 +1,8 @@
 # Tokyo Planner (MSP → HND), Hyatt-first
 
+
+Currently, this is not modularized, so this won't work. play.py was supposed to be plan.py. I will fix it eventually.
+
 ## Quick start
 Create a venv, then run the CLI.
 
