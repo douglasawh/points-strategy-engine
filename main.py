@@ -94,11 +94,11 @@ class TravelEnv:
             airline = sum(self.points[k] for k in self.points if CARDS[k]["airline"])
             hyatt = sum(self.points[k] for k in self.points if CARDS[k]["hyatt"])
 
-            if airline >= AIRLINE_REQUIRED and hyatt >= HYATT_REQUIRED:
-                reward += TOKYO_VALUE
-            else:
-                reward -= 3000
-
+            flight_value = min(airline / AIRLINE_REQUIRED, 1.0) * 6000
+            hotel_value = min(hyatt / HYATT_REQUIRED, 1.0) * 3500
+            
+            availability_factor = 0.8
+            reward += (flight_value + hotel_value) * availability_factor
         return self._get_state(), reward, done
 
 
