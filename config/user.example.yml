@@ -1,0 +1,7 @@
+# config/user.example.yml
+home_airport: MSP
+prefer_nonstop: true
+hotel_chain_bias: World of Hyatt
+start_hotel: Park Hyatt Tokyo
+alternate_hotels:
+  - Andaz Tokyo Toranomon Hills
