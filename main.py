@@ -1,218 +1,218 @@
 import random
-import math
-from dataclasses import dataclass, field
-from typing import Dict, List, Callable
-
+import numpy as np
+from collections import defaultdict
 
 # =========================
-# Core Data Models
+# Config
 # =========================
 
-@dataclass
-class Currency:
-    name: str
-    transfer_partners: List[str]
+MONTHS = 24
+DISCOUNT = 0.95
+ALPHA = 0.1
+EPSILON = 0.2
+EPISODES = 70000
 
-
-@dataclass
-class CreditCard:
-    name: str
-    currency: str
-    signup_bonus: int
-    annual_fee: int
-    earning_rate: float  # points per dollar
-    spend_assumption: float  # yearly spend
-
-
-@dataclass
-class Redemption:
-    name: str
-    program: str
-    points_required: int
-    cash_price: float
-    availability_probability: float  # modeled uncertainty
-
-
-@dataclass
-class Strategy:
-    name: str
-    cards: List[CreditCard]
-
+AIRLINE_REQUIRED = 150000
+HYATT_REQUIRED = 150000
+TOKYO_VALUE = 9000
 
 # =========================
-# Tokyo 2027 Goal Modeling
+# Card Definitions
 # =========================
 
-TOKYO_FLIGHT_ANA = Redemption(
-    name="ANA Business via Transfer",
-    program="ANA",
-    points_required=150000,
-    cash_price=6000,
-    availability_probability=0.6
-)
+CARDS = {
+    "chase": {
+        "signup_bonus": 60000,
+        "monthly_earn": 2500,
+        "annual_fee": 95,
+        "airline_transfer": True,
+        "hyatt_transfer": True
+    },
+    "amex": {
+        "signup_bonus": 80000,
+        "monthly_earn": 2000,
+        "annual_fee": 695,
+        "airline_transfer": True,
+        "hyatt_transfer": False
+    },
+    "delta": {
+        "signup_bonus": 70000,
+        "monthly_earn": 2200,
+        "annual_fee": 550,
+        "airline_transfer": False,
+        "hyatt_transfer": False
+    },
+    "citi": {
+        "signup_bonus": 0,
+        "monthly_earn": 300,  # LOW ongoing usage
+        "annual_fee": 595,
+        "airline_transfer": True,
+        "hyatt_transfer": False
+    }
+}
 
-TOKYO_FLIGHT_DELTA = Redemption(
-    name="Delta One Direct MSP-HND",
-    program="Delta",
-    points_required=320000,
-    cash_price=6000,
-    availability_probability=0.75
-)
-
-TOKYO_HOTEL_PARK_HYATT = Redemption(
-    name="Park Hyatt Tokyo 5 Nights",
-    program="Hyatt",
-    points_required=175000,
-    cash_price=3500,
-    availability_probability=0.7
-)
-
-TOKYO_HOTEL_ANDAZ = Redemption(
-    name="Andaz Tokyo 5 Nights",
-    program="Hyatt",
-    points_required=140000,
-    cash_price=3000,
-    availability_probability=0.8
-)
-
-
-ALL_REDEMPTIONS = [
-    TOKYO_FLIGHT_ANA,
-    TOKYO_FLIGHT_DELTA,
-    TOKYO_HOTEL_PARK_HYATT,
-    TOKYO_HOTEL_ANDAZ
-]
-
+ACTIONS = ["nothing", "chase", "amex", "delta", "cancel_citi"]
 
 # =========================
-# Strategy Definitions
+# Environment
 # =========================
 
-CHASE_SAPPHIRE = CreditCard(
-    name="Chase Sapphire Preferred",
-    currency="Ultimate Rewards",
-    signup_bonus=60000,
-    annual_fee=95,
-    earning_rate=1.5,
-    spend_assumption=20000
-)
+class TravelEnv:
 
-AMEX_PLAT = CreditCard(
-    name="Amex Platinum",
-    currency="Membership Rewards",
-    signup_bonus=80000,
-    annual_fee=695,
-    earning_rate=1.2,
-    spend_assumption=20000
-)
+    def reset(self):
+        self.month = 0
 
-DELTA_RESERVE = CreditCard(
-    name="Delta Reserve",
-    currency="Delta",
-    signup_bonus=70000,
-    annual_fee=550,
-    earning_rate=1.3,
-    spend_assumption=20000
-)
+        self.cards = {
+            "chase": False,
+            "amex": False,
+            "delta": False,
+            "citi": True
+        }
 
+        self.points = {
+            "chase": 0,
+            "amex": 0,
+            "delta": 0,
+            "citi": 100000  # Existing balance
+        }
 
-STRATEGIES = [
-    Strategy("Chase + Hyatt Focus", [CHASE_SAPPHIRE]),
-    Strategy("Amex + ANA Focus", [AMEX_PLAT]),
-    Strategy("Delta Loyalty Focus", [DELTA_RESERVE]),
-    Strategy("Hybrid Chase + Amex", [CHASE_SAPPHIRE, AMEX_PLAT]),
-]
+        return self.get_state()
 
-
-# =========================
-# Engine Logic
-# =========================
-
-YEARS_UNTIL_TRIP = 2
-
-
-def simulate_points(strategy: Strategy):
-    balances = {}
-
-    for card in strategy.cards:
-        earned = (
-            card.signup_bonus +
-            card.earning_rate * card.spend_assumption * YEARS_UNTIL_TRIP
+    def get_state(self):
+        return (
+            self.month,
+            int(self.cards["chase"]),
+            int(self.cards["amex"]),
+            int(self.cards["delta"]),
+            int(self.cards["citi"])
         )
 
-        balances.setdefault(card.currency, 0)
-        balances[card.currency] += earned
+    def step(self, action):
 
-    return balances
+        reward = 0
+        action_name = ACTIONS[action]
 
+        # Apply for new card
+        if action_name in ["chase", "amex", "delta"]:
+            if not self.cards[action_name]:
+                self.cards[action_name] = True
+                self.points[action_name] += CARDS[action_name]["signup_bonus"]
 
-def redemption_value(redemption: Redemption):
-    return redemption.cash_price / redemption.points_required
+        # Cancel Citi
+        if action_name == "cancel_citi":
+            self.cards["citi"] = False
 
+        # Monthly earnings + fees
+        for card_name, owned in self.cards.items():
+            if owned:
+                self.points[card_name] += CARDS[card_name]["monthly_earn"]
+                reward -= CARDS[card_name]["annual_fee"] / 12
 
-def simulate_redemption_success(redemption: Redemption):
-    return random.random() < redemption.availability_probability
+        self.month += 1
+        done = self.month >= MONTHS
 
+        if done:
 
-def strategy_simulation(strategy: Strategy, simulations=1000):
-    total_value = 0
-    success_count = 0
-    total_fees = sum(card.annual_fee * YEARS_UNTIL_TRIP for card in strategy.cards)
+            airline_points = sum(
+                self.points[k]
+                for k in self.points
+                if CARDS[k]["airline_transfer"]
+            )
 
-    for _ in range(simulations):
-        balances = simulate_points(strategy)
-        simulation_value = 0
-        success = True
+            hyatt_points = sum(
+                self.points[k]
+                for k in self.points
+                if CARDS[k]["hyatt_transfer"]
+            )
 
-        for redemption in ALL_REDEMPTIONS:
-            if simulate_redemption_success(redemption):
-                simulation_value += redemption.cash_price
+            success = airline_points >= AIRLINE_REQUIRED and hyatt_points >= HYATT_REQUIRED
+
+            if success:
+                reward += TOKYO_VALUE
             else:
-                success = False
+                reward -= 3000
 
-        total_value += simulation_value
-
-        if success:
-            success_count += 1
-
-    expected_value = total_value / simulations
-    success_probability = success_count / simulations
-
-    utility_score = expected_value - total_fees
-
-    return {
-        "strategy": strategy.name,
-        "expected_value": round(expected_value, 2),
-        "success_probability": round(success_probability, 3),
-        "fees": total_fees,
-        "utility_score": round(utility_score, 2)
-    }
+        return self.get_state(), reward, done
 
 
 # =========================
-# Run Engine
+# Q Learning
 # =========================
 
-def run_engine():
-    print("\n=== Tokyo 2027 Strategy Simulation ===\n")
+Q = defaultdict(lambda: np.zeros(len(ACTIONS)))
 
-    results = []
+def choose_action(state):
+    if random.random() < EPSILON:
+        return random.randint(0, len(ACTIONS) - 1)
+    return np.argmax(Q[state])
 
-    for strategy in STRATEGIES:
-        result = strategy_simulation(strategy, simulations=2000)
-        results.append(result)
 
-    results.sort(key=lambda x: x["utility_score"], reverse=True)
+def train():
 
-    for r in results:
-        print(f"Strategy: {r['strategy']}")
-        print(f"  Expected Trip Value: ${r['expected_value']}")
-        print(f"  Success Probability: {r['success_probability']*100}%")
-        print(f"  Total Fees: ${r['fees']}")
-        print(f"  Utility Score: {r['utility_score']}")
-        print("-" * 40)
+    env = TravelEnv()
+
+    for episode in range(EPISODES):
+        state = env.reset()
+        done = False
+
+        while not done:
+            action = choose_action(state)
+            next_state, reward, done = env.step(action)
+
+            best_next = np.max(Q[next_state])
+
+            Q[state][action] += ALPHA * (
+                reward + DISCOUNT * best_next - Q[state][action]
+            )
+
+            state = next_state
+
+    print("Training complete.\n")
+
+
+# =========================
+# Evaluate Learned Policy
+# =========================
+
+def evaluate():
+
+    env = TravelEnv()
+    state = env.reset()
+    done = False
+
+    print("=== Learned Strategy ===\n")
+
+    while not done:
+        action = np.argmax(Q[state])
+        print(f"Month {state[0]} -> {ACTIONS[action]}")
+        state, reward, done = env.step(action)
+
+    print("\nFinal Balances:")
+    for k, v in env.points.items():
+        print(k, int(v))
+
+    airline_points = sum(
+        env.points[k]
+        for k in env.points
+        if CARDS[k]["airline_transfer"]
+    )
+
+    hyatt_points = sum(
+        env.points[k]
+        for k in env.points
+        if CARDS[k]["hyatt_transfer"]
+    )
+
+    print("\nAirline Eligible Points:", int(airline_points))
+    print("Hyatt Eligible Points:", int(hyatt_points))
+
+    if airline_points >= AIRLINE_REQUIRED and hyatt_points >= HYATT_REQUIRED:
+        print("\nTokyo is achievable!")
+    else:
+        print("\nTokyo NOT achievable.")
 
 
 if __name__ == "__main__":
-    run_engine()
+    train()
+    evaluate()
 
