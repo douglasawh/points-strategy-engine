@@ -1,0 +1,15 @@
+cat > pyproject.toml << 'EOF'
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "points-strategy-engine"
+version = "0.1.0"
+description = "Personal travel assistant (MSP↔HND + Hyatt allocator + Ollama chat)"
+requires-python = ">=3.10"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pte*"]
+EOF
