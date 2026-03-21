@@ -3,4 +3,7 @@ streamlit>=1.36
 ollama>=0.1.8
 setuptools>=68
 wheel
+fastapi>=0.109
+uvicorn>=0.27
+pydantic>=2.0
 

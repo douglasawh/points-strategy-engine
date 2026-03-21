@@ -6,3 +6,7 @@ __pycache__/
 *.faiss
 .env
 .venv
+
+# Generated files
+logs/
+out/
