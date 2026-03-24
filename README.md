@@ -21,7 +21,7 @@ Pull Requests very much welcome!
 - Uvicorn
 
 **Other**
-- Streamlit (legacy web app)
+- Streamlit (legacy web app - leaving as backup for now as things are moving fast with development)
 - Ollama (for natural language processing)
 
 ## Running the App
