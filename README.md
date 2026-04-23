@@ -1,10 +1,14 @@
+# Points Strategy Engine
+
 Meant to be AGPL but when I did a git --force it got rewritten. I'll fix it eventually.
 
 At first, this may be a simple financial simulator, using information about prices (cash and points) to decide when to go where.
 
-Ultimately, the goal is that this will be a full blown travel assistant with some sort of ollama integration built in for natural language queries.
+Ultimately, the goal is that this will be a full-blown travel assistant with some sort of ollama integration built in for natural language queries.
 
 Pull Requests very much welcome!
+
+Looking for the planning output format? See [README_PLAN.md](README_PLAN.md).
 
 ## Tech Stack
 
@@ -42,6 +46,8 @@ The API will be available at http://localhost:8000 (docs at http://localhost:800
 
 ### Frontend (React + Vite)
 
+For detailed frontend documentation, see [frontend/README.md](frontend/README.md).
+
 ```bash
 cd frontend
 npm install
@@ -50,7 +56,7 @@ npm run dev
 
 Open http://localhost:5173 in your browser.
 
-### Quick Test
+## Quick Test
 
 1. Start the backend in one terminal
 2. Start the frontend in another terminal
